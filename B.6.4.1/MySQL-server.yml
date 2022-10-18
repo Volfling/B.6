@@ -1,0 +1,13 @@
+---
+- hosts: localhost
+  gather_facts: true
+  tasks: 
+          - name: install mysql    
+            apt: 
+                    name: mysql 
+                    update_cache: yes 
+                    state: present
+          - name: mysql start
+            service: 
+                    name:mysql 
+                    state:started 
