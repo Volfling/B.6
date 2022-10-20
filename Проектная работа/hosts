@@ -1,0 +1,9 @@
+[app]
+192.168.0.5
+192.168.0.12
+
+[web]
+localhost ansible_connection=local pg_ver=12 pg_data=/data/pgsql
+
+[database]
+localhost ansible_connection=local pg_ver=12 pg_data=/data/pgsql

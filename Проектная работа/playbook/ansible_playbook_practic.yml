@@ -1,0 +1,119 @@
+---
+- hosts: app
+  gather_facts: true
+  user: root
+  become: true
+  become_method: sudo 
+  become_user: root
+  tasks:
+          - name: install docker on ubuntu
+            block:
+                    - name: install pkg
+                      apt:
+                              pkg:
+                                      - apt-transport-https
+                                      - ca-certificates
+                                      - curl
+                                      - software-properties-common
+                                      - python3-pip
+                                      - virtualenv
+                                      - python3-setuptools
+                              state: latest
+                              update_cache: true
+                    - name: add key
+                      apt_key:
+                              url: https://download.docker.com/linux/ubuntu/gpg
+                              state: present
+
+                    - name: add docker repository
+                      apt_repository:
+                              repo: deb https://download.docker.com/linux/ubuntu focal stable
+                              state: present
+
+                    - name: docker.io install
+                      apt:
+                              name: docker.io
+                              state: latest
+                              update_cache: true
+
+
+                    - name: install docker
+                      apt:
+                              name:
+                                      - docker
+                                      - docker.io
+                                      - docker-compose
+                                      - docker-registry
+                              state: latest
+                              update_cache: true
+
+                    
+            when: ansible_os_family == "Debian"
+
+          - name: install docker on centos
+            block:
+                    - name: install utilits
+                      yum:
+                              name:
+                                      - yum-utils
+                                      - device-mapper-persistent-data
+                                      - lvm2
+                              state: latest
+
+                    - name: docker repo
+                      yum_repository:
+                              name: docker
+                              description: repo for docker
+                              baseurl: https://download.docker.com/linux/centos/8/x86_64/stable/
+                              gpgcheck: no
+
+                    - name: install docker
+                      command:
+                              cmd: yum install docker-ce --nobest -y
+
+            when: ansible_os_family == "RedHat"  
+
+- hosts: database
+  gather_facts: yes
+  user: root
+  become: true
+  become_method: sudo
+  become_user: root
+  tasks:
+          - name: add postgresql repo key
+            shell: wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+
+          - name: "Add PostgreSQL repository"
+            apt_repository:
+                    repo: "deb http://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main"
+                    filename: postgresql
+          - name: "Install PostgreSQL version {{ pg_ver }}"
+            apt:
+                    name: "{{ item }}"
+                    state: present
+            loop:
+                    - "postgresql-{{ pg_ver }}"
+                    - postgresql-contrib
+                    - "postgresql-client-{{ pg_ver }}"
+      
+          - name: create dir
+            file:
+                    path: "{{ pg_data }}"
+                    state: directory
+                    owner: postgres
+                    group: postgres
+                    mode: 0750
+
+          - name: setting
+            replace:
+                    path: "/etc/postgresql/{{ pg_ver }}/main/postgresql.conf"
+                    regexp: "^data_directory =.*$"
+                    replace: "data_directory = '{{ pg_data }}'"
+            notify: restarted postgresql
+
+  handlers:
+
+        - name: restarted postgresql
+          ansible.builtin.sysvinit:
+                  name: "postgresql@{{ pg_ver }}-main"
+                  state: restarted
