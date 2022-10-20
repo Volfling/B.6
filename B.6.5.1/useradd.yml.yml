@@ -1,11 +1,13 @@
 ---
 - hosts: webserver
   gather_facts: true
+  vars:
+          password: SDOXuAN2JdK5k
   tasks:
           - name: create user1
             user:
                     name: user1
-                    password: QWErty
+                    password: "{{password}}"
                     shell: /bin/bash
                     groups: sudo
                     append: yes
